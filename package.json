@@ -16,6 +16,7 @@
     "mikronode": "^0.3.3",
     "morgan": "~1.6.1",
     "q": "^1.4.1",
+    "q-foreach": "0.0.3",
     "serve-favicon": "~2.3.0"
   }
 }

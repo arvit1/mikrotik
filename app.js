@@ -21,6 +21,8 @@ var User = require('./models/user').User;
 var RouterController = require("./controllers/RouterController");
 
 var async = require("async");
+var Q = require('q');
+require('q-foreach')(Q);
 
 var router = express.Router();              // get an instance of the express Router
 var app = express();
@@ -89,7 +91,7 @@ router.route('/users')
                     res.json({error: err});
                 else
                     res.json({message: 'User created!'});
-            })
+            });
         })
 
         .get(function (req, res) {
@@ -182,22 +184,26 @@ router.route('/routers/:id')
 router.route('/ip')
         .get(function (req, res) {
             connect(req.query.ip, function (err, conn) {
-                var chan = conn.openChannel();
-                chan.write('/ip/address/' + req.query.command, function () {
-                    chan.on('done', function (data) {
-                        console.log(data)
-                        //var parsed = api.parseItems(data);
+                if (err) {
+                    res.json({error: err.message});
+                } else {
+                    var chan = conn.openChannel();
+                    chan.write('/ip/address/print', function () {
+                        chan.on('done', function (data) {
+                            console.log(data);
+                            //var parsed = api.parseItems(data);
 
-                        //var kot = [];
-                        //parsed.forEach(function (item) {
-                        //    console.log('Interface/IP: ' + item.interface + "/" + item.address);
-                        //    kot.push('Interface/IP: ' + item.interface + "/" + item['last-link-up-time']);
-                        //});
-                        chan.close();
-                        conn.close();
-                        res.json(data)
+                            //var kot = [];
+                            //parsed.forEach(function (item) {
+                            //    console.log('Interface/IP: ' + item.interface + "/" + item.address);
+                            //    kot.push('Interface/IP: ' + item.interface + "/" + item['last-link-up-time']);
+                            //});
+                            chan.close();
+                            conn.close();
+                            res.json(data);
+                        });
                     });
-                });
+                }
             });
         })
 
@@ -205,7 +211,7 @@ router.route('/ip')
             //console.log(req.body.ip);
             connect(req.body.ip, function (err, conn) {
                 if (err) {
-                    res.json({error: err.message})
+                    res.json({error: err.message});
                 } else {
                     var chan = conn.openChannel();
 
@@ -246,10 +252,23 @@ router.route('/ip')
         })
 
         .put(function (req, res) {
-            removeIpAddress(req.body.ip, function (err, data) {
-                console.log(data);
-                if(err) res.json(err);
-                else res.json(data);
+            setIpAddress(req.body.ip, req.body.address, req.body.newAddress, function (err, data) {
+                if (err) {
+                    res.json({error: err});
+                } else {
+                    res.json(data);
+                }
+            });
+        })
+          
+        .delete(function (req, res) {
+            console.log("erddhhhididid")
+            removeIpAddress(req.body.ip, req.body.address, function (err, data) {
+                if (err) {
+                    res.json({error: err});
+                } else {
+                    res.json(data);
+                }
             });
         })
 
@@ -340,19 +359,15 @@ module.exports = app;
 
 
 
-// connect(ip, username, password)
 function connect(ip, cb) {
     //console.log(ip)
     RouterController.getRouterByIp(ip, function (err, router) {
         if (err) {
             cb(err);
         } else {
-            console.log(router)
-            var connection = new api(router[0].ip, router[0].username, router[0].password, {
-                timeout: 4,
-                closeOnDone: true,
-                closeOnTimeout: true
-            });
+            console.log("login to router");
+            console.log(router);
+            var connection = new api(router[0].ip, router[0].username, router[0].password);
             connection.connect(function (conn) {
                 cb(null, conn);
             });
@@ -388,7 +403,7 @@ function printDns(ip, cb) {
     });
 }
 
-function removeIpAddress(ip, cb) {
+function removeIpAddress(ip, address, cb) {
     connect(ip, function (err, conn) {
         if (err) {
             cb(err);
@@ -396,16 +411,86 @@ function removeIpAddress(ip, cb) {
             var chan = conn.openChannel();
             chan.write('/ip/address/print', function () {
                 chan.on('done', function (data) {
-                    //var parsed = api.parseItems(data);
+                    var parsed = api.parseItems(data);
+                    var kot = [];
+                    async.each(parsed, function (item, callback) {
+                        if (item.address === address+"/24") {
+                            kot.push(item);
+                            var arrCmd = ['/ip/address/remove'];
+                            arrCmd.push('=.id="'+item['.id']+'"');
+                            chan.write(arrCmd, function () {
+                                chan.on('done', function (data) {
+                                    console.log(data);
+                                    cb(null, data);
+                                    chan.close();
+                                    conn.close();
+                                });
+                            });
+                            chan.once('trap', function (trap, chan) {
+                                console.log('Command failed: ' + trap);
+                            });
+                            chan.once('error', function (err, chan) {
+                                console.log('Oops: ' + err);
+                            });
+                        }
+                        callback();
+                    }, function (err) {
+                        if (kot[0]) {
+                            cb(null, kot);
+                        } else {
+                            cb("ip " + address + " nuk u gjet");
+                        }
+                        chan.close();
+                        conn.close();
+                    });
+                });
+            });
+        }
+    });
+}
 
-                    //var kot = [];
-                    //parsed.forEach(function (item) {
-                    //    console.log('Interface/IP: ' + item.interface + "/" + item.address);
-                    //    kot.push('Interface/IP: ' + item.interface + "/" + item['last-link-up-time']);
-                    //});
-                    chan.close();
-                    conn.close();
-                    cb(null, data);
+function setIpAddress(ip, address, newAddress, cb) {    
+    connect(ip, function (err, conn) {
+        if (err) {
+            cb(err);
+        } else {
+            var chan = conn.openChannel();
+            chan.write('/ip/address/print', function () {
+                chan.on('done', function (data) {
+                    var parsed = api.parseItems(data);
+                    var kot = [];
+                    async.each(parsed, function (item, callback) {
+                        if (item.address === address+"/24") {
+                            kot.push(item);
+                            console.log(item['.id']);
+                            var arrCmd = ['/ip/address/set'];
+                            arrCmd.push('=address='+newAddress);
+                            arrCmd.push('=.id="'+item['.id']+'"');
+                            console.log(arrCmd)
+                            chan.write(arrCmd, function () {
+                                chan.on('done', function (data) {                                    
+                                    cb(null, data);
+                                    chan.close();
+                                    conn.close();
+                                });
+                            });
+                            chan.once('trap', function (trap, chan) {
+                                console.log('Command failed: ' + trap);
+                            });
+                            chan.once('error', function (err, chan) {
+                                console.log('Oops: ' + err);
+                            });
+                        }
+                        callback();
+                    }, function (err) {
+                        if (kot[0]) {
+                            cb(null, kot);
+                        } else {
+                            cb("ip " + ip + " nuk u gjet");
+                        }
+                        chan.close();
+                        conn.close();
+                    });
                 });
             });
         }

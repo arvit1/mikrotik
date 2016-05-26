@@ -244,10 +244,12 @@ router.route('/ip')
                 }
             });
         })
-        
-        .put(function(req, res){
-            removeIpAddress(req.body.ip, function(data){
+
+        .put(function (req, res) {
+            removeIpAddress(req.body.ip, function (err, data) {
                 console.log(data);
+                if(err) res.json(err);
+                else res.json(data);
             });
         })
 
@@ -388,20 +390,24 @@ function printDns(ip, cb) {
 
 function removeIpAddress(ip, cb) {
     connect(ip, function (err, conn) {
-        var chan = conn.openChannel();
-        chan.write('/ip/address/print', function () {
-            chan.on('done', function (data) {                
-                //var parsed = api.parseItems(data);
+        if (err) {
+            cb(err);
+        } else {
+            var chan = conn.openChannel();
+            chan.write('/ip/address/print', function () {
+                chan.on('done', function (data) {
+                    //var parsed = api.parseItems(data);
 
-                //var kot = [];
-                //parsed.forEach(function (item) {
-                //    console.log('Interface/IP: ' + item.interface + "/" + item.address);
-                //    kot.push('Interface/IP: ' + item.interface + "/" + item['last-link-up-time']);
-                //});
-                chan.close();
-                conn.close();
-                cb(data);
+                    //var kot = [];
+                    //parsed.forEach(function (item) {
+                    //    console.log('Interface/IP: ' + item.interface + "/" + item.address);
+                    //    kot.push('Interface/IP: ' + item.interface + "/" + item['last-link-up-time']);
+                    //});
+                    chan.close();
+                    conn.close();
+                    cb(null, data);
+                });
             });
-        });
+        }
     });
 }

@@ -1,0 +1,19 @@
+extends layout
+
+block content
+  h1= title
+  p Welcome to #{title}
+  form(action='/api/commands', method='post')
+   ul  
+   for router in routers    
+        li.routerItem #{router.name} : #{router.ip}
+        br
+        input(name='router', type='checkbox', rid='#{router._id}', rname="#{router.name}", ip="#{router.ip}")
+        a.edit(href='#{router._id}', rname="#{router.name}", ip="#{router.ip}") Edit
+        label &nbsp;
+        a.delete(href='#{router._id}') Delete
+   p
+   button Submit
+
+  script(src='https://code.jquery.com/jquery-2.2.3.js', crossorigin='anonymous')
+  script(src='js/index/app.js')

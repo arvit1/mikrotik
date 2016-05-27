@@ -8,6 +8,7 @@ var bodyParser = require('body-parser');
 var index = require('./routes/index');
 var users = require('./routes/users');
 var dns = require('./routes/dns');
+var ip = require('./routes/ip');
 
 
 //var mongoose = require('mongoose');
@@ -44,6 +45,7 @@ app.use(cors());
 app.use('/', index);
 app.use('/users', users);
 app.use('/dns', dns);
+app.use('/ip', ip);
 app.use('/api', router);
 
 // catch 404 and forward to error handler
@@ -88,7 +90,7 @@ router.route('/users')
 
             user.save(function (err) {
                 if (err)
-                    res.json({error: err});
+                    res.end(err);
                 else
                     res.json({message: 'User created!'});
             });
@@ -97,7 +99,7 @@ router.route('/users')
         .get(function (req, res) {
             User.find(function (err, routers) {
                 if (err)
-                    res.json({error: err});
+                    res.end(err);
                 else
                     res.json(routers);
             });
@@ -118,7 +120,7 @@ router.route('/users')
 
             User.findById(id, function (err, user) {
                 if (err)
-                    res.json({error: err});
+                    res.end(err);
                 else {
                     if (req.body.username)
                         user.username = req.body.username;
@@ -130,12 +132,12 @@ router.route('/users')
                     //user.routers.push({name: "kot"})
                     Router.findById(routerId, function (err, router) {
                         if (err)
-                            res.json({error: err});
+                            res.end(err);
                         else {
                             user.routers.push(router);
                             user.save(function (err) {
                                 if (err)
-                                    res.json({error: err});
+                                    res.end(err);
                                 else
                                     res.json({message: 'User updated!'});
                             });
@@ -153,7 +155,7 @@ router.route('/routers')
         .get(function (req, res) {
             RouterController.getRouters(function (err, router) {
                 if (err) {
-                    res.json({error: err});
+                    res.end(err);
                 } else {
                     res.json(router);
                 }
@@ -172,7 +174,7 @@ router.route('/routers/:id')
         .put(function (req, res) {      //kjo poshte eshte ip
             RouterController.updateByIp(req.params.id, req.body.address, req.body.username, req.body.password, req.body.name, function (err, data) {
                 if (err) {
-                    res.json({error: err.message});
+                    res.end(err);
                 } else {
                     res.json(data);
                 }
@@ -185,7 +187,7 @@ router.route('/ip')
         .get(function (req, res) {
             connect(req.query.ip, function (err, conn) {
                 if (err) {
-                    res.json({error: err.message});
+                    res.end(err);
                 } else {
                     var chan = conn.openChannel();
                     chan.write('/ip/address/print', function () {
@@ -211,19 +213,13 @@ router.route('/ip')
             //console.log(req.body.ip);
             connect(req.body.ip, function (err, conn) {
                 if (err) {
-                    res.json({error: err.message});
+                    res.end(err);
                 } else {
                     var chan = conn.openChannel();
 
                     var arrCmd = ['/ip/address/add'];
-                    if (req.body.address) {
-                        arrCmd.push('=address=' + req.body.address);
-                    }
-                    if (req.body.interface) {
-                        arrCmd.push('=interface=' + req.body.interface);
-                    }
-                    if (req.body.netmask) {
-                        arrCmd.push('=netmask=' + req.body.netmask);
+                    if (req.body.address && req.body.netmask) {
+                        arrCmd.push('=address=' + req.body.address + "/" + req.body.netmask);
                     }
                     if (req.body.interface) {
                         arrCmd.push('=interface=' + req.body.interface);
@@ -251,7 +247,7 @@ router.route('/ip')
         .put(function (req, res) {
             setIpAddress(req.body.ip, req.body.address, req.body.newAddress, req.body.netmask, req.body.newNetmask, function (err, data) {
                 if (err) {
-                    res.json({error: err});
+                    res.end(err);
                 } else {
                     res.json(data);
 //                    RouterController.updateByIp(req.body.ip, req.body.address, req.body.username, req.body.password, req.body.name, function (err, data2) {
@@ -268,7 +264,7 @@ router.route('/ip')
         .delete(function (req, res) {
             removeIpAddress(req.body.ip, req.body.address, req.body.netmask, function (err, data) {
                 if (err) {
-                    res.json({error: err});
+                    res.end(err);
                 } else {
                     res.json(data);
                 }
@@ -301,7 +297,7 @@ router.route('/dns')
         .get(function (req, res) {
             printDns(req.query.ip, function (err, data) {
                 if (err) {
-                    res.json({error: err});
+                    res.end(err);
                 } else {
                     res.json(data);
                 }
@@ -330,7 +326,7 @@ router.route('/commands')
             async.each(routers, function (router, callback1) {
                 printDns(router.ip, function (err, data) {
                     if (err) {
-                        res.json({error: err});
+                        res.end(""+err);
                     } else {
                         var parsed = api.parseItems(data);
                         var templateObj2 = Object.assign({}, templateObj);  //Object.assign() mbaje mend
@@ -396,9 +392,11 @@ function printDns(ip, cb) {
                     conn.close();
                 });
                 chan.once('trap', function (trap, chan) {
+                    cb(new Error('komanda nuk u ekzekutua sakte ne ip: ' + ip));
                     console.log('Command failed: ' + trap);
                 });
                 chan.once('error', function (err, chan) {
+                    cb(err);
                     console.log('Oops: ' + err);
                 });
             });

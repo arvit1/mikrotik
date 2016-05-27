@@ -10,21 +10,21 @@ $(document).ready(function ($) {
         var rname = $(e.target).attr('rname');
         var ip = $(e.target).attr('ip');       
         selectedRouters.push({ id: rid, name: rname, ip: ip });
-        console.log(selectedRouters)
+        console.log(selectedRouters);
     });
     
     deleteRouter.click(function (e) {
         e.preventDefault();
         var rid = $(this).attr('rid');
-        console.log(rid)
+        console.log(rid);
         $.get("http://localhost:3000/api/dns", function (data) {
-            console.log(data)
-        })
+            console.log(data);
+        });
     });
 
-    $('button').click(function (e) {              
+    $('.dns').click(function (e) {              
         $.post("http://localhost:3000/api/commands", {selectedRouters: JSON.stringify(selectedRouters)}, function (data) {
-            console.log(data)
+            console.log(data);
             var win = window.open('http://localhost:3000/dns');
                 with (win.document) {
                     open();
@@ -33,7 +33,14 @@ $(document).ready(function ($) {
                 }           
         });        
         return false;
-    });        
+    }); 
+    
+    $('.ip').click(function (e) {
+        e.preventDefault();
+        $.get("http://localhost:3000/api/ip?ip="+selectedRouters[0].ip, function (data) {
+            console.log(data);
+        });
+    }); 
     
     //submit.click(function () {
     //    formData = form.serialize();

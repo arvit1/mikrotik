@@ -217,7 +217,7 @@ router.route('/ip')
 
                     var arrCmd = ['/ip/address/add'];
                     if (req.body.address) {
-                        arrCmd.push('=address=' + req.body.address + '/24');
+                        arrCmd.push('=address=' + req.body.address);
                     }
                     if (req.body.interface) {
                         arrCmd.push('=interface=' + req.body.interface);
@@ -225,18 +225,15 @@ router.route('/ip')
                     if (req.body.netmask) {
                         arrCmd.push('=netmask=' + req.body.netmask);
                     }
+                    if (req.body.interface) {
+                        arrCmd.push('=interface=' + req.body.interface);
+                    }
 
                     console.log(arrCmd);
                     chan.write(arrCmd, function () {
                         chan.on('done', function (data) {
                             console.log(data);
-                            RouterController.updateByIp(req.body.ip, req.body.address, req.body.username, req.body.password, req.body.name, function (err, data2) {
-                                if (err) {
-                                    res.json({error: err.message});
-                                } else {
-                                    res.json(JSON.stringify(data) + " : " + JSON.stringify(data2));
-                                }
-                            });
+                            res.json(data)
                             chan.close();
                             conn.close();
                         });
@@ -252,18 +249,24 @@ router.route('/ip')
         })
 
         .put(function (req, res) {
-            setIpAddress(req.body.ip, req.body.address, req.body.newAddress, function (err, data) {
+            setIpAddress(req.body.ip, req.body.address, req.body.newAddress, req.body.netmask, req.body.newNetmask, function (err, data) {
                 if (err) {
                     res.json({error: err});
                 } else {
                     res.json(data);
+//                    RouterController.updateByIp(req.body.ip, req.body.address, req.body.username, req.body.password, req.body.name, function (err, data2) {
+//                        if (err) {
+//                            res.json({error: err.message});
+//                        } else {
+//                            res.json([data, data2]);
+//                        }
+//                    });
                 }
             });
         })
-          
+
         .delete(function (req, res) {
-            console.log("erddhhhididid")
-            removeIpAddress(req.body.ip, req.body.address, function (err, data) {
+            removeIpAddress(req.body.ip, req.body.address, req.body.netmask, function (err, data) {
                 if (err) {
                     res.json({error: err});
                 } else {
@@ -403,7 +406,7 @@ function printDns(ip, cb) {
     });
 }
 
-function removeIpAddress(ip, address, cb) {
+function removeIpAddress(ip, address, netmask, cb) {
     connect(ip, function (err, conn) {
         if (err) {
             cb(err);
@@ -414,14 +417,14 @@ function removeIpAddress(ip, address, cb) {
                     var parsed = api.parseItems(data);
                     var kot = [];
                     async.each(parsed, function (item, callback) {
-                        if (item.address === address+"/24") {
+                        if (item.address === address + "/" + netmask) {
                             kot.push(item);
                             var arrCmd = ['/ip/address/remove'];
-                            arrCmd.push('=.id="'+item['.id']+'"');
+                            arrCmd.push('=.id="' + item['.id'] + '"');
                             chan.write(arrCmd, function () {
                                 chan.on('done', function (data) {
                                     console.log(data);
-                                    cb(null, data);
+                                    //cb(null, data);
                                     chan.close();
                                     conn.close();
                                 });
@@ -449,7 +452,7 @@ function removeIpAddress(ip, address, cb) {
     });
 }
 
-function setIpAddress(ip, address, newAddress, cb) {    
+function setIpAddress(ip, address, newAddress, netmask, newNetmask, cb) {
     connect(ip, function (err, conn) {
         if (err) {
             cb(err);
@@ -460,16 +463,16 @@ function setIpAddress(ip, address, newAddress, cb) {
                     var parsed = api.parseItems(data);
                     var kot = [];
                     async.each(parsed, function (item, callback) {
-                        if (item.address === address+"/24") {
+                        if (item.address === address + "/" + netmask) {
                             kot.push(item);
                             console.log(item['.id']);
                             var arrCmd = ['/ip/address/set'];
-                            arrCmd.push('=address='+newAddress);
-                            arrCmd.push('=.id="'+item['.id']+'"');
+                            arrCmd.push('=address=' + newAddress + "/" + newNetmask);                            
+                            arrCmd.push('=.id="' + item['.id'] + '"');
                             console.log(arrCmd)
                             chan.write(arrCmd, function () {
-                                chan.on('done', function (data) {                                    
-                                    cb(null, data);
+                                chan.on('done', function (data) {
+                                    //cb(null, data);
                                     chan.close();
                                     conn.close();
                                 });

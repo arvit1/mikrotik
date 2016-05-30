@@ -2,21 +2,19 @@ extends layout
 block extraHeader
     link(rel='stylesheet', href='stylesheets/my.css')
 
-block content
-    body
-        -var index = 0
-        for router in routers 
-            form.form(action='', method='post')    
-                label #{router.name} : #{router.ip}
-                br
-                each val, key in templateObjs[index]
-                    label #{key}
-                    input(name='#{key}', value='#{val}')
-                    br                    
-                -index++
-                button.get(ip='#{router.ip}')  Get
-                button.submit  Submit
+block content    
+    -var index = 0
+    for router in routers 
+        form.form(action='', method='post')    
+            label #{router.name} : #{router.ip}
+            br
+            each val, key in templateObjs[index]
+                label #{key}
+                input(name='#{key}', value='#{val}')
+                br                    
+            -index++
+            button.get(ip='#{router.ip}')  Get
+            button.submit  Submit
 
-
-  script(src='https://code.jquery.com/jquery-2.2.3.js', crossorigin='anonymous')
-  script(src='js/dns/app.js')
+block scripts
+  script(src='js/ip/app.js')

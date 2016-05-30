@@ -3,16 +3,16 @@ $(document).ready(function ($) {
     var checkRouter = $('input[type=checkbox]');
     var deleteRouter = $('.delete');
     var selectedRouters = [];
-    
+
     checkRouter.click(function (e) {
         //e.preventDefault();
         var rid = $(e.target).attr('rid');
         var rname = $(e.target).attr('rname');
-        var ip = $(e.target).attr('ip');       
-        selectedRouters.push({ id: rid, name: rname, ip: ip });
+        var ip = $(e.target).attr('ip');
+        selectedRouters.push({id: rid, name: rname, ip: ip});
         console.log(selectedRouters);
     });
-    
+
     deleteRouter.click(function (e) {
         e.preventDefault();
         var rid = $(this).attr('rid');
@@ -22,26 +22,35 @@ $(document).ready(function ($) {
         });
     });
 
-    $('.dns').click(function (e) {              
+    $('.dns').click(function (e) {
+        e.preventDefault();
         $.post("http://localhost:3000/api/commands", {selectedRouters: JSON.stringify(selectedRouters)}, function (data) {
             console.log(data);
             var win = window.open('http://localhost:3000/dns');
-                with (win.document) {
-                    open();
-                    write(data);
-                    close();
-                }           
-        });        
+            with (win.document) {
+                open();
+                write(data);
+                close();
+            }
+        });
         return false;
-    }); 
-    
+    });
+
     $('.ip').click(function (e) {
         e.preventDefault();
-        $.get("http://localhost:3000/api/ip?ip="+selectedRouters[0].ip, function (data) {
+        var data = {selectedRouters: selectedRouters};
+        console.log(decodeURIComponent($.param(data)));
+        $.get("http://localhost:3000/ip?" + $.param(data), function (data) {
             console.log(data);
+            var win = window.open('http://localhost:3000/ip');
+            with (win.document) {
+                open();
+                write(data);
+                close();
+            }
         });
-    }); 
-    
+        return false;
+    });
     //submit.click(function () {
     //    formData = form.serialize();
     //    //$.post("http://localhost:3000/api/dns", form.serialize(), function (data) {            

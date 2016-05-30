@@ -1,6 +1,6 @@
 var RouterModel = require('../models/router').Router;
 
-var RouterController = function () { }
+var RouterController = function () { };
 
 RouterController.getRouters = function (cb) {
     RouterModel.find(function (err, routers) {

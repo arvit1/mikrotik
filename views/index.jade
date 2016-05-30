@@ -3,7 +3,7 @@ extends layout
 block content
   h1= title
   p Welcome to #{title}
-  form(action='/api/commands', method='post')
+  form(action='', method='post')
    ul  
    for router in routers    
         li.routerItem #{router.name} : #{router.ip}
@@ -13,9 +13,9 @@ block content
         label &nbsp;
         a.delete(href='#{router._id}') Delete
    p
-   button.dns DNS
-   &nbsp;
-   button.ip IP
+  button.dns DNS
+  label &nbsp;
+  button.ip IP
 
-  script(src='https://code.jquery.com/jquery-2.2.3.js', crossorigin='anonymous')
+block scripts
   script(src='js/index/app.js')

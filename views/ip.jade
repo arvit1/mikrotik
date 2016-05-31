@@ -3,18 +3,29 @@ block extraHeader
     link(rel='stylesheet', href='stylesheets/my.css')
 
 block content    
-    -var index = 0
+    
     for router in routers 
-        form.form(action='', method='post')    
-            label #{router.name} : #{router.ip}
+        label #{router.name} : #{router.ip}
+        br
+        for template in router.templateArray
+            form.form(action='', method='post')
+                each val, key in template
+                    label #{key}
+                    input(name='#{key}', value='#{val}')                    
+                    if key === "address"
+                        input(name="oldAddress" type="hidden", value="#{val}")
+                    br
+                input(type="hidden", value="#{router.ip}")                
+                button.submit(ip='#{router.ip}')  Update
+                button.delete(ip='#{router.ip}')  Delete
+    br
+    br
+    form.form(action='/ip', method='post')
+        each val, key in addTemplate
+            label #{key}
+            input(name='#{key}', value='#{val}')            
             br
-            each val, key in templateObjs[index]
-                label #{key}
-                input(name='#{key}', value='#{val}')
-                br                    
-            -index++
-            button.get(ip='#{router.ip}')  Get
-            button.submit  Submit
+        button  Add Ip Address
 
 block scripts
   script(src='js/ip/app.js')

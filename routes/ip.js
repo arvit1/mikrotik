@@ -16,18 +16,12 @@ router.get('/', function (req, res, next) {
         'dynamic': false,
         'disabled': false
     };
-    var templateArray = [];
-    var routers = [{
-            "ip": "192.2.2.9",
-            "name": "test",
-            "username": "arviti",
-            "password": "1234"
-        }, {
-            "password": "1234",
-            "username": "arviti",
-            "ip": "10.10.3.3",
-            "name": "wifi"
-        }];
+
+    var addTemplateObj = {
+        'ip': '192.2.2.9',
+        'address': '1.1.1.1/24',        
+        'interface': 'ether1'
+    };
 
     var routers2 = req.query.selectedRouters;
     //console.log(routers2);
@@ -43,11 +37,12 @@ router.get('/', function (req, res, next) {
                     chan.on('done', function (data) {
                         //console.log(data);
                         var parsed = api.parseItems(data);
-                        
+                        var templateArray = [];
                         async.forEach(parsed, function (item, callback2) {
                             templateArray.push(item);
                             callback2();
                         }, function (err) {
+                            router.templateArray = templateArray;
                             chan.close();
                             conn.close();
                             callback1();
@@ -57,15 +52,17 @@ router.get('/', function (req, res, next) {
             }
         });
     }, function (err) {
-        console.log(templateArray);
-        res.render('ip', {templateObjs: templateArray, routers: routers2});
+        //console.log(JSON.stringify(routers2));
+        res.render('ip', {routers: routers2, addTemplate: addTemplateObj});
     });
 });
 
 
 router.post('/', function (req, res, next) {
-    console.log(req.body);
-    var routers2 = JSON.parse(req.body.selectedRouters);
+
+    var routers2 = [];
+    routers2.push(req.body);
+    console.log(routers2);
     routers2.forEach(function (router) {
         mikronode.connect(router.ip, function (err, conn) {
             if (err) {
@@ -74,11 +71,11 @@ router.post('/', function (req, res, next) {
                 var chan = conn.openChannel();
 
                 var arrCmd = ['/ip/address/add'];
-                if (req.body.address && req.body.netmask) {
-                    arrCmd.push('=address=' + req.body.address + "/" + req.body.netmask);
-                }
-                if (req.body.interface) {
-                    arrCmd.push('=interface=' + req.body.interface);
+                for (var key in router) {
+                    if (key !== "ip") {
+                        var value = router[key];
+                        arrCmd.push('=' + key + '=' + value);
+                    }
                 }
 
                 console.log(arrCmd);
@@ -101,8 +98,8 @@ router.post('/', function (req, res, next) {
     });
 });
 
-router.put(function (req, res) {
-    setIpAddress(req.body.ip, req.body.address, req.body.newAddress, req.body.netmask, req.body.newNetmask, function (err, data) {
+router.put('/', function (req, res) {
+    setIpAddress(req.body.rip, req.body.oldAddress, req.body.address, function (err, data) {
         if (err) {
             res.end("" + err);
         } else {
@@ -118,8 +115,8 @@ router.put(function (req, res) {
     });
 });
 
-router.delete(function (req, res) {
-    removeIpAddress(req.body.ip, req.body.address, req.body.netmask, function (err, data) {
+router.delete('/', function (req, res) {
+    removeIpAddress(req.body.rip, req.body.address, function (err, data) {
         if (err) {
             res.end("" + err);
         } else {
@@ -128,7 +125,7 @@ router.delete(function (req, res) {
     });
 });
 
-function setIpAddress(ip, address, newAddress, netmask, newNetmask, cb) {
+function setIpAddress(ip, address, newAddress, cb) {
     mikronode.connect(ip, function (err, conn) {
         if (err) {
             cb(err);
@@ -139,13 +136,13 @@ function setIpAddress(ip, address, newAddress, netmask, newNetmask, cb) {
                     var parsed = api.parseItems(data);
                     var kot = [];
                     async.each(parsed, function (item, callback) {
-                        if (item.address === address + "/" + netmask) {
+                        if (item.address === address) {
                             kot.push(item);
                             console.log(item['.id']);
                             var arrCmd = ['/ip/address/set'];
-                            arrCmd.push('=address=' + newAddress + "/" + newNetmask);
+                            arrCmd.push('=address=' + newAddress);
                             arrCmd.push('=.id="' + item['.id'] + '"');
-                            console.log(arrCmd)
+                            console.log(arrCmd);
                             chan.write(arrCmd, function () {
                                 chan.on('done', function (data) {
                                     //cb(null, data);
@@ -176,7 +173,7 @@ function setIpAddress(ip, address, newAddress, netmask, newNetmask, cb) {
     });
 }
 
-function removeIpAddress(ip, address, netmask, cb) {
+function removeIpAddress(ip, address, cb) {
     mikronode.connect(ip, function (err, conn) {
         if (err) {
             cb(err);
@@ -187,7 +184,7 @@ function removeIpAddress(ip, address, netmask, cb) {
                     var parsed = api.parseItems(data);
                     var kot = [];
                     async.each(parsed, function (item, callback) {
-                        if (item.address === address + "/" + netmask) {
+                        if (item.address === address) {
                             kot.push(item);
                             var arrCmd = ['/ip/address/remove'];
                             arrCmd.push('=.id="' + item['.id'] + '"');
